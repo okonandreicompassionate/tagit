@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Tagit — admin dashboard plan. Four questions, one hard rule about the service_role key, and four phases from zero-build to abuse detection.">
+<title>Tagit — admin dashboard plan</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ground: '#0a0a09',
+          surface: '#141412',
+          surfhi: '#1e1e1b',
+          edge: '#2a2a26',
+          dim: '#8c8c84',
+          faint: '#5d5d57',
+          snap: '#fffc00',
+          flame: '#ff6b2c',
+          good: '#2bd97c',
+        },
+        fontFamily: {
+          display: ['"Bricolage Grotesque"', 'Helvetica Neue', 'Arial', 'sans-serif'],
+          body: ['"IBM Plex Sans"', 'Segoe UI', 'system-ui', 'sans-serif'],
+          mono: ['"IBM Plex Mono"', 'Consolas', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  body {
+    background: #0a0a09;
+    color: #fff;
+    font-family: '"IBM Plex Sans"', 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  .stack-type {
+    font-family: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.85;
+  }
+  .stub {
+    background:
+      radial-gradient(circle at 0 50%, transparent 11px, #141412 11px),
+      radial-gradient(circle at 100% 50%, transparent 11px, #141412 11px);
+    background-size: 51% 100%, 51% 100%;
+    background-position: left, right;
+    background-repeat: no-repeat;
+  }
+  pre.sql { white-space: pre-wrap; word-break: break-word; }
+  ::selection { background: #fffc00; color: #000; }
+</style>
+</head>
+<body>
+
+<div class="mx-auto max-w-4xl px-5 pb-28 pt-14 sm:px-8">
+
+  <!-- ============ HERO ============ -->
+  <header class="grid gap-7">
+    <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-faint">
+      Internal · planning only · nothing built yet
+    </p>
+    <h1 class="stack-type text-snap text-[15vw] leading-[0.82] sm:text-[86px]">Admin dashboard</h1>
+    <p class="font-display max-w-[30ch] text-[22px] font-semibold leading-[1.2] tracking-[-0.02em] sm:max-w-none sm:text-[30px]">
+      This exists so that when we do build the admin panel, the shape is already
+      argued out and the security decisions aren't made in a hurry.
+    </p>
+  </header>
+
+  <!-- ============ WHO IT'S FOR ============ -->
+  <section class="mt-16 border-l-[3px] border-snap pl-6">
+    <h2 class="font-display text-[26px] font-extrabold tracking-[-0.03em]">Who it's for</h2>
+    <p class="mt-4 max-w-[62ch] text-dim">
+      Two or three people, not a support department. No ticketing system, no
+      permissions matrix, no workflow engine. It needs to answer four questions
+      fast, on a laptop, possibly at a venue on bad WiFi.
+    </p>
+
+    <div class="mt-6 grid gap-2.5 sm:grid-cols-2">
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15.5px] text-white"><strong class="font-semibold text-snap">Is it working right now?</strong></p>
+        <p class="mt-1 text-[14px] text-dim">Tonight's events, check-ins landing, errors.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15.5px] text-white"><strong class="font-semibold text-snap">Did we get paid?</strong></p>
+        <p class="mt-1 text-[14px] text-dim">Boosts, and whether Paystack actually confirmed them.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15.5px] text-white"><strong class="font-semibold text-snap">Is anyone abusing it?</strong></p>
+        <p class="mt-1 text-[14px] text-dim">Inflated ranks, fake events, mass scanning.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15.5px] text-white"><strong class="font-semibold text-snap">Is it growing?</strong></p>
+        <p class="mt-1 text-[14px] text-dim">Do people come back to a second event.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THE ONE HARD RULE ============ -->
+  <section class="mt-20">
+    <div class="rounded-3xl border border-flame/60 bg-flame/[0.07] p-6 sm:p-9">
+      <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-flame">The one hard rule</p>
+      <h2 class="mt-2 font-display text-[26px] font-extrabold tracking-[-0.03em] sm:text-[32px]" style="text-wrap: balance">
+        The <code class="font-mono text-snap">service_role</code> key must never reach a browser.
+      </h2>
+      <p class="mt-4 max-w-[64ch] text-[15.5px] text-dim">
+        It bypasses every RLS policy in the database. Anything holding it can read
+        every user's social graph and rewrite anyone's rank. That rules out the
+        fastest option — a static page with the key in it — permanently, no
+        matter how private the URL is or how much of a hurry we're in.
+      </p>
+      <p class="mt-4 max-w-[64ch] text-[15.5px] text-dim">
+        So an admin UI is either <strong class="font-semibold text-white">Supabase Studio</strong>,
+        where the key never leaves Supabase's own servers, or
+        <strong class="font-semibold text-white">a server-rendered app</strong>, where the key
+        lives in server environment variables and the browser only ever sees results.
+        There is no third option that is both safe and quick.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 0 ============ -->
+  <section class="mt-20">
+    <div class="stub grid grid-cols-[46px_minmax(0,1fr)] gap-5 rounded-2xl px-7 py-6">
+      <span class="stack-type text-[38px] text-snap">0</span>
+      <div>
+        <h3 class="font-display text-[20px] font-semibold tracking-[-0.02em]">This week, zero build</h3>
+        <p class="mt-2 text-[15.5px] text-dim">
+          Supabase Studio plus a handful of saved views. Free, immediate, and
+          enough for a technical founder — not enough for a non-technical
+          teammate, which is the trigger for Phase 1.
+        </p>
+        <p class="mt-2 text-[14px] text-faint">
+          These views answer the four questions above and are safe to expose to
+          admins only — none is granted to <code class="font-mono">anon</code>.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 grid gap-3">
+      <div class="overflow-hidden rounded-2xl border border-edge">
+        <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+          admin_tonight — what's on, and whether check-ins are landing
+        </p>
+        <pre class="sql overflow-x-auto bg-ground px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-dim"><span class="text-faint">-- Tonight: what's on, and whether check-ins are landing.</span>
+<span class="text-snap">create or replace view</span> admin_tonight <span class="text-snap">as</span>
+<span class="text-snap">select</span> e.id, e.name, e.city, e.starts_at,
+       count(distinct k.card_id) filter (<span class="text-snap">where</span> k.method = 'qr') <span class="text-snap">as</span> verified,
+       count(distinct k.card_id) filter (<span class="text-snap">where</span> k.method = 'code') <span class="text-snap">as</span> joined_by_code,
+       count(distinct l.id) <span class="text-snap">as</span> scans
+<span class="text-snap">from</span> events e
+<span class="text-snap">left join</span> checkins k <span class="text-snap">on</span> k.event_id = e.id
+<span class="text-snap">left join</span> links l    <span class="text-snap">on</span> l.event_id = e.id
+<span class="text-snap">where</span> e.starts_at <span class="text-snap">between</span> now() - interval '12 hours' <span class="text-snap">and</span> now() + interval '24 hours'
+<span class="text-snap">group by</span> e.id
+<span class="text-snap">order by</span> e.starts_at;</pre>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-edge">
+        <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+          admin_boosts — every boost, and whether the webhook ever confirmed it
+        </p>
+        <pre class="sql overflow-x-auto bg-ground px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-dim"><span class="text-faint">-- Pending for more than 15 minutes almost always means the webhook
+-- isn't reaching us, not that the buyer abandoned checkout.</span>
+<span class="text-snap">create or replace view</span> admin_boosts <span class="text-snap">as</span>
+<span class="text-snap">select</span> b.id, b.created_at, b.status, b.amount_kobo / 100 <span class="text-snap">as</span> naira,
+       b.days, b.kind, e.name <span class="text-snap">as</span> event, c.name <span class="text-snap">as</span> buyer,
+       b.paid_at, b.paystack_ref,
+       (b.status = 'pending' <span class="text-snap">and</span> b.created_at &lt; now() - interval '15 minutes') <span class="text-snap">as</span> likely_webhook_failure
+<span class="text-snap">from</span> boosts b
+<span class="text-snap">join</span> events e <span class="text-snap">on</span> e.id = b.event_id
+<span class="text-snap">join</span> cards  c <span class="text-snap">on</span> c.id = b.card_id
+<span class="text-snap">order by</span> b.created_at desc;</pre>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-edge">
+        <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+          admin_rank_outliers — rank that didn't come from plausible behaviour
+        </p>
+        <pre class="sql overflow-x-auto bg-ground px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-dim"><span class="text-faint">-- Meeting more than ~15 people at one event is possible; 60 is not.</span>
+<span class="text-snap">create or replace view</span> admin_rank_outliers <span class="text-snap">as</span>
+<span class="text-snap">select</span> c.id, c.name, c.swag,
+       count(distinct l.to_card)   <span class="text-snap">as</span> people,
+       count(distinct k.event_id)  <span class="text-snap">as</span> events,
+       max(l.points)               <span class="text-snap">as</span> biggest_single_scan,
+       round(count(l.id)::numeric / nullif(count(distinct l.event_id), 0), 1) <span class="text-snap">as</span> scans_per_event
+<span class="text-snap">from</span> cards c
+<span class="text-snap">left join</span> links l    <span class="text-snap">on</span> l.from_card = c.id
+<span class="text-snap">left join</span> checkins k <span class="text-snap">on</span> k.card_id = c.id <span class="text-snap">and</span> k.method = 'qr'
+<span class="text-snap">group by</span> c.id
+<span class="text-snap">having</span> c.swag &gt; 500
+<span class="text-snap">order by</span> scans_per_event desc nulls last;</pre>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-edge">
+        <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+          admin_return_rate — the only retention number that matters early
+        </p>
+        <pre class="sql overflow-x-auto bg-ground px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-dim"><span class="text-snap">create or replace view</span> admin_return_rate <span class="text-snap">as</span>
+<span class="text-snap">select</span> count(*) filter (<span class="text-snap">where</span> events &gt;= 2)::numeric
+       / nullif(count(*), 0) <span class="text-snap">as</span> returned_for_a_second_event,
+       count(*) <span class="text-snap">as</span> users_with_any_event
+<span class="text-snap">from</span> (
+  <span class="text-snap">select</span> card_id, count(distinct event_id) <span class="text-snap">as</span> events
+  <span class="text-snap">from</span> checkins <span class="text-snap">where</span> method = 'qr'
+  <span class="text-snap">group by</span> card_id
+) t;</pre>
+      </div>
+    </div>
+    <p class="mt-3 text-[13px] text-faint">Do not grant these to <code class="font-mono">anon</code>. Create them, then read them in Studio only.</p>
+  </section>
+
+  <!-- ============ PHASE 1 ============ -->
+  <section class="mt-20">
+    <div class="stub grid grid-cols-[46px_minmax(0,1fr)] gap-5 rounded-2xl px-7 py-6">
+      <span class="stack-type text-[38px] text-snap">1</span>
+      <div>
+        <h3 class="font-display text-[20px] font-semibold tracking-[-0.02em]">Read-only dashboard</h3>
+        <p class="mt-2 text-[15.5px] text-dim">
+          Built when a non-technical teammate needs it, and not before.
+        </p>
+        <p class="mt-2 text-[14px] text-faint">
+          Next.js on Vercel — not a taste choice, the one that keeps the service
+          key server-side by default while staying a single deploy. Supabase
+          Auth with an allow-list of admin emails. Same Tailwind palette as
+          <code class="font-mono">landing/</code> so it reads as the same product.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 overflow-hidden rounded-2xl border border-edge">
+      <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+        Four screens, matching the four questions
+      </p>
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_88px] gap-4 border-b border-edge px-5 py-3">
+        <span class="text-[14px] font-bold text-snap">Tonight</span>
+        <span class="text-[14px] text-dim">Live events, check-ins per event, scans in the last hour</span>
+        <span class="text-right font-mono text-[12px] text-faint">30s</span>
+      </div>
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_88px] gap-4 border-b border-edge px-5 py-3">
+        <span class="text-[14px] font-bold text-snap">Money</span>
+        <span class="text-[14px] text-dim">Boosts, revenue this month, stuck-pending alerts</span>
+        <span class="text-right font-mono text-[12px] text-faint">On load</span>
+      </div>
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_88px] gap-4 border-b border-edge px-5 py-3">
+        <span class="text-[14px] font-bold text-snap">People</span>
+        <span class="text-[14px] text-dim">Search a card, see their events and rank, no social graph</span>
+        <span class="text-right font-mono text-[12px] text-faint">On demand</span>
+      </div>
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_88px] gap-4 px-5 py-3">
+        <span class="text-[14px] font-bold text-snap">Growth</span>
+        <span class="text-[14px] text-dim">Installs → onboarded → first scan → second event</span>
+        <span class="text-right font-mono text-[12px] text-faint">Daily</span>
+      </div>
+    </div>
+
+    <div class="mt-4 rounded-2xl border-l-[3px] border-flame bg-surface/60 p-5">
+      <h3 class="text-[15.5px] font-bold text-flame">One rule for the People screen</h3>
+      <p class="mt-2 text-[15px] text-dim">
+        Admins should see <em>counts</em>, not who scanned whom. There's no
+        operational reason to read someone's social graph, and once the UI
+        exists someone will use it. Build the restraint in rather than relying
+        on it.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 2 ============ -->
+  <section class="mt-20">
+    <div class="stub grid grid-cols-[46px_minmax(0,1fr)] gap-5 rounded-2xl px-7 py-6">
+      <span class="stack-type text-[38px] text-snap">2</span>
+      <div>
+        <h3 class="font-display text-[20px] font-semibold tracking-[-0.02em]">Actions</h3>
+        <p class="mt-2 text-[15.5px] text-dim">
+          Every action needs an audit row. Not for compliance theatre — for the
+          moment in six months when a rank is wrong and nobody remembers who
+          changed it.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 overflow-hidden rounded-2xl border border-edge">
+      <p class="border-b border-edge bg-surface px-5 py-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint">
+        admin_actions
+      </p>
+      <pre class="sql overflow-x-auto bg-ground px-5 py-4 font-mono text-[12.5px] leading-[1.7] text-dim"><span class="text-snap">create table</span> admin_actions (
+  id          bigserial primary key,
+  admin_email text        not null,
+  action      text        not null,   <span class="text-faint">-- 'takedown' | 'unlist' | 'zero_swag' | 'refund' | 'feature'</span>
+  target_kind text        not null,   <span class="text-faint">-- 'event' | 'card' | 'boost'</span>
+  target_id   text        not null,
+  reason      text        not null,   <span class="text-faint">-- required, not optional</span>
+  created_at  timestamptz not null default now()
+);</pre>
+    </div>
+
+    <p class="mt-6 max-w-[62ch] text-dim">Actions worth having, in order of how soon they'll be needed:</p>
+    <div class="mt-4 grid gap-2.5">
+      <div class="flex items-baseline gap-4 rounded-xl border border-edge bg-surface px-5 py-3.5">
+        <b class="font-display text-[17px] font-extrabold text-snap">1</b>
+        <span class="text-[15px] text-white"><strong class="font-semibold">Unlist an event</strong> <span class="text-dim">— hide from Discover, don't delete. Reversible, which is why it comes first.</span></span>
+      </div>
+      <div class="flex items-baseline gap-4 rounded-xl border border-edge bg-surface px-5 py-3.5">
+        <b class="font-display text-[17px] font-extrabold text-snap">2</b>
+        <span class="text-[15px] text-white"><strong class="font-semibold">Feature an event</strong> <span class="text-dim">— someone has to flip <code class="font-mono">sponsored</code> when a brand pays outside the self-serve flow. Currently nothing can.</span></span>
+      </div>
+      <div class="flex items-baseline gap-4 rounded-xl border border-edge bg-surface px-5 py-3.5">
+        <b class="font-display text-[17px] font-extrabold text-snap">3</b>
+        <span class="text-[15px] text-white"><strong class="font-semibold">Zero someone's swag</strong> <span class="text-dim">— the answer to a farmed leaderboard.</span></span>
+      </div>
+      <div class="flex items-baseline gap-4 rounded-xl border border-edge bg-surface px-5 py-3.5">
+        <b class="font-display text-[17px] font-extrabold text-snap">4</b>
+        <span class="text-[15px] text-white"><strong class="font-semibold">Refund a boost</strong> <span class="text-dim">— Paystack refund plus setting <code class="font-mono">boosted_until</code> to now.</span></span>
+      </div>
+      <div class="flex items-baseline gap-4 rounded-xl border border-edge bg-surface px-5 py-3.5">
+        <b class="font-display text-[17px] font-extrabold text-snap">5</b>
+        <span class="text-[15px] text-white"><strong class="font-semibold">Delete an event / card</strong> <span class="text-dim">— last resort, after unlisting.</span></span>
+      </div>
+    </div>
+    <p class="mt-4 text-[14px] text-faint">
+      Make <code class="font-mono">reason</code> required. It costs the admin four seconds and it's the only
+      thing that makes the audit log worth reading.
+    </p>
+  </section>
+
+  <!-- ============ PHASE 3 ============ -->
+  <section class="mt-20">
+    <div class="stub grid grid-cols-[46px_minmax(0,1fr)] gap-5 rounded-2xl px-7 py-6">
+      <span class="stack-type text-[38px] text-snap">3</span>
+      <div>
+        <h3 class="font-display text-[20px] font-semibold tracking-[-0.02em]">Abuse detection</h3>
+        <p class="mt-2 text-[15.5px] text-dim">
+          Only once there's enough traffic for patterns to exist. Signals worth
+          watching, cheapest first.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 grid gap-2.5 sm:grid-cols-2">
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15px] text-white font-semibold">Scans per event per person</p>
+        <p class="mt-1 text-[14px] text-dim">The daily unique index already caps repeat pairs; this catches breadth rather than depth.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15px] text-white font-semibold">Check-ins with no scans</p>
+        <p class="mt-1 text-[14px] text-dim">Someone tapping every door code they can find to farm the +20, without meeting anyone.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15px] text-white font-semibold">Check-ins, no host presence</p>
+        <p class="mt-1 text-[14px] text-dim">A fake event created to mint check-in points.</p>
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4">
+        <p class="text-[15px] text-white font-semibold">Cards created in bursts</p>
+        <p class="mt-1 text-[14px] text-dim">From one IP — needs request logging we don't currently keep.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT WE CAN'T ANSWER YET ============ -->
+  <section class="mt-20">
+    <div class="rounded-3xl border border-flame/45 bg-flame/[0.06] p-6 sm:p-9">
+      <p class="font-mono text-[11px] uppercase tracking-[0.16em] text-flame">Worth reading before designing screens</p>
+      <h2 class="mt-2 font-display text-[26px] font-extrabold tracking-[-0.03em] sm:text-[30px]" style="text-wrap: balance">
+        What we can't answer yet
+      </h2>
+      <div class="mt-5 grid gap-4">
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white">Snap adds aren't measured.</strong>
+          <code class="font-mono">addedOnSnap</code> is local to each phone and never syncs. That
+          means the core conversion of the entire app — did the scan actually
+          turn into a Snap friendship — is invisible. Fixing this is a schema
+          change and probably matters more than the dashboard itself.
+        </p>
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white">No install or session telemetry at all.</strong>
+          The growth funnel above can't be built past "has a card." No analytics
+          SDK is wired up.
+        </p>
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white">No <code class="font-mono">reports</code> table.</strong>
+          Users cannot report anyone, so moderation is entirely reactive to
+          things we happen to notice.
+        </p>
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white">No admin role.</strong>
+          There's no <code class="font-mono">is_admin</code> flag or admin claim; Phase 1 needs one
+          before it can have a login.
+        </p>
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white"><code class="font-mono">links.points</code> is still client-supplied.</strong>
+          Rank is directionally right but not evidential. Any dashboard number
+          derived from swag inherits that.
+        </p>
+        <p class="text-[15px] text-dim">
+          <strong class="font-semibold text-white">Check-ins have no location.</strong>
+          We trust the door code was scanned at the door. Someone could
+          photograph it and share it in a group chat. Geofencing the check-in
+          would close that, at the cost of a location permission.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ OPEN QUESTIONS ============ -->
+  <section class="mt-20">
+    <h2 class="font-display text-[26px] font-extrabold tracking-[-0.03em]">Open questions</h2>
+    <div class="mt-6 grid gap-2.5">
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4 text-[15px] text-dim">
+        Does the team need this before or after the first real event? Phase 0 may carry us through the first few.
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4 text-[15px] text-dim">
+        Is anyone on the team non-technical? That single answer decides whether Phase 1 is needed at all or whether Studio is enough for months.
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4 text-[15px] text-dim">
+        Do we want moderation to be reactive (respond to reports) or proactive (review new public events before listing)? Proactive is a lot more work and needs a queue.
+      </div>
+      <div class="rounded-xl border border-edge bg-surface px-5 py-4 text-[15px] text-dim">
+        Should admins be able to see the social graph at all? Recommend no.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLOSE ============ -->
+  <div class="mt-24 grid gap-3 rounded-3xl bg-snap px-7 py-9 text-black sm:px-9">
+    <h2 class="font-display text-[26px] font-extrabold leading-[1.1] tracking-[-0.03em] sm:text-[34px]" style="text-wrap: balance">
+      Build the restraint in. Don't rely on it.
+    </h2>
+    <p class="text-[16px] font-medium opacity-80">
+      Four phases, one key that never touches a browser, and a reason for every
+      screen before it gets built.
+    </p>
+  </div>
+
+  <p class="mt-8 font-mono text-[11.5px] leading-[1.9] text-faint">
+    Tagit — admin dashboard plan.<br>
+    Planning only. Nothing here is built yet.
+  </p>
+
+</div>
+</body>
+</html>
